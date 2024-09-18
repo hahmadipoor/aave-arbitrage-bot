@@ -3,11 +3,11 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@aave/core-v3/contracts/interfaces/IPool.sol";
 import "@aave/core-v3/contracts/flashloan/base/FlashLoanSimpleReceiverBase.sol";
 import "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "hardhat/console.sol";
 
 contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
@@ -16,7 +16,6 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
 
   constructor(IPoolAddressesProvider provider) FlashLoanSimpleReceiverBase(provider) {
 
-    console.log(provider.getACLAdmin());
   }
 
   function createFlashLoan(address asset, uint amount) external {
@@ -47,8 +46,12 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase {
     // run arbitrage or liquidations here
     // abi.decode(params) to decode params
 
-    emit Log(asset, IERC20(asset).balanceOf(address(this)));
+    console.log("amount transfered to this contract:", amount);
+    console.log("premium: ",premium);
+    uint256 daiBalanceAfterBorrow=IERC20(asset).balanceOf(address(this));
+    console.log("Dai Balance after borrow:", daiBalanceAfterBorrow);
     
+    emit Log(asset, IERC20(asset).balanceOf(address(this)));
     uint256 amountOwing = amount+premium;
     IERC20(asset).approve(address(POOL), amountOwing);
 
