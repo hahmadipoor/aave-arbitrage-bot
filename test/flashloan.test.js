@@ -5,7 +5,7 @@ const ERC20ABI=require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.s
 const hre=require("hardhat");
 const { POOL_ADDRESS_PROVIDER_ON_ETHEREUM } = require("../constants/pool-addresses");
 const { DAI_ON_ETHEREUM } = require("../constants/token-addresses");
-const {getProvider}=require("../constants/providers");
+const {getProvider}=require("../utils/providers");
 require("dotenv").config();
 
 
