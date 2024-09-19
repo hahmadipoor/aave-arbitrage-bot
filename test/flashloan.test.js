@@ -1,11 +1,15 @@
 // Right click on the script name and hit "Run" to execute
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const ERC20ABI=require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json");
+const ERC20Json=require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json");
+const simpleFlashLoanJson=require("../artifacts/contracts/SimpleFlashLoan.sol/SimpleFlashLoan.json");
 const hre=require("hardhat");
 const { POOL_ADDRESS_PROVIDER_ON_ETHEREUM } = require("../constants/pool-addresses");
 const { DAI_ON_ETHEREUM } = require("../constants/token-addresses");
 const {getProvider}=require("../utils/providers");
+const {executeFlashloan} =require("../scripts/executeFlashLoan");
+const  {protocols}=require("../constants/protocols")
+
 require("dotenv").config();
 
 describe("FlashLoan", function () {
@@ -30,7 +34,7 @@ describe("FlashLoan", function () {
     console.log("ETH balance of signer before loan :",ethBalanceBeforeLoan, "wei =", ethers.formatEther(ethBalanceBeforeLoan)," ETH.");
     ///////////////2 deploying our Flashloan contract
     const SimpleFlashLoan = await ethers.getContractFactory("SimpleFlashLoan");
-    simpleFlashLoan = await SimpleFlashLoan.deploy(POOL_ADDRESS_PROVIDER_ON_ETHEREUM, {maxFeePerGas: 10566729409});
+    simpleFlashLoan = await SimpleFlashLoan.deploy(POOL_ADDRESS_PROVIDER_ON_ETHEREUM, {maxFeePerGas: 30633113823});
     const transactionReceipt = await simpleFlashLoan.deploymentTransaction().wait(1);
     console.log(transactionReceipt);
     const {gasPrice, gasUsed}=transactionReceipt;
@@ -40,7 +44,7 @@ describe("FlashLoan", function () {
     token = await ethers.getContractAt("IERC20", DAI_ON_ETHEREUM);
     daiBalanceBeforeLoan=await token.balanceOf(signer.address);
     await token.connect(signer).transfer(simpleFlashLoan.target, 25000);
-    const DAI = new ethers.Contract(DAI_ON_ETHEREUM, ERC20ABI.abi, provider);
+    const DAI = new ethers.Contract(DAI_ON_ETHEREUM, ERC20Json.abi, provider);
     await DAI.connect(signer).transfer(await simpleFlashLoan.getAddress(),25000);  
     daiBalance=await token.balanceOf(signer.address);
     
@@ -49,14 +53,31 @@ describe("FlashLoan", function () {
 
   it("should borrow some dai", async function () {
     
-    expect(ethBalanceBeforeLoan).to.be.gt(0);
     ///////////////////4 executing the loan    
     const nonce= await signer.getNonce();
-    const transactionResponse = await simpleFlashLoan.connect(signer).createFlashLoan(DAI_ON_ETHEREUM, 150000,{nonce:nonce}); // Borrow 150,000 DAI in a Flash Loan with no upfront collateral
-    await transactionResponse.wait();
-    const ethBalanceAfterLoan = await provider.getBalance(await signer.address);
+    
+    const params={
+      loanAmount: 150000, 
+      hops:[
+          {
+              protocol: protocols.UNISWAP_V2, 
+              data:null,
+              path: [DAI_ON_ETHEREUM, DAI_ON_ETHEREUM],
+              amountOutMinimum: 10,
+              sqrtPriceLimitX96: 100,
+          }, 
+      ], 
+      gasLimit:23376, 
+      gasPrice:13446636527,
+      signer: signer, 
+      simpleFlashLoanAddress: simpleFlashLoan.target, 
+      simpleFlashLoanJson: simpleFlashLoanJson, 
+      nonce:nonce
+    }
+    const tx=await executeFlashloan(params)
+    await tx.wait();
+    const ethBalanceAfterLoan = await provider.getBalance(signer.address);
     expect(ethBalanceBeforeLoan).to.be.gt(ethBalanceAfterLoan);
-    console.log(transactionResponse); 
-
+   
   });
 });
