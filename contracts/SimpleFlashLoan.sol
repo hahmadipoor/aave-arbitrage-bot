@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "hardhat/console.sol";
 
-contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFlashloan,Withdraw {
+contract SimpleFlashLoan is FlashLoanSimpleReceiverBase, FlashloanValidation, IFlashloan, Withdraw {
 
   using SignedMath for uint256;
   event Log(address asset, uint val); 
@@ -40,15 +40,15 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFl
                 loanAmount: params.loanAmount,
                 routes: params.routes
             })
-        );
-        address loanToken = RouteUtils.getInitialToken(params.routes[0]);
+    );
+    address loanToken = RouteUtils.getInitialToken(params.routes[0]);
         POOL.flashLoanSimple(
             address(this), //receiver
             loanToken, //the asset we want to borrow
             params.loanAmount,
             data,
             0 //referralCode
-        );
+    );
   }
 
   function executeOperation(
@@ -60,7 +60,6 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFl
   ) external returns (bool){
    
     console.log("--------------callback is called--------------------");
-
     // abi.decode(params) to decode params
     FlashParams memory decoded = abi.decode( params, (FlashParams));
     address loanToken = RouteUtils.getInitialToken(decoded.routes[0]);
@@ -82,6 +81,7 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFl
   }
 
   function routeLoop(Route[] memory routes, uint256 totalAmount) internal checkTotalRoutePart(routes) {
+
         console.log("inside routeLoop");
         for (uint256 i = 0; i < routes.length; i++) {
             uint256 amountIn = Part.partToAmountIn(routes[i].part, totalAmount);
@@ -91,6 +91,7 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFl
     }
 
   function hopLoop(Route memory route, uint256 totalAmount) internal {
+
         uint256 amountIn = totalAmount;
         for (uint256 i = 0; i < route.hops.length; i++) {
             amountIn = pickProtocol(route.hops[i], amountIn);
@@ -151,11 +152,8 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase,FlashloanValidation, IFl
             )[1];
     }
 
-    function approveToken(
-        address token,
-        address to,
-        uint256 amountIn
-    ) internal {
+    function approveToken( address token, address to, uint256 amountIn) internal {
+
         require(IERC20(token).approve(to, amountIn), "approve failed.");
     }
 
