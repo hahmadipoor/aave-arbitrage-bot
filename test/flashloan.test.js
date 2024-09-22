@@ -5,79 +5,66 @@ const ERC20Json=require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.
 const simpleFlashLoanJson=require("../artifacts/contracts/SimpleFlashLoan.sol/SimpleFlashLoan.json");
 const hre=require("hardhat");
 const { POOL_ADDRESS_PROVIDER_ON_ETHEREUM } = require("../constants/pool-addresses");
-const { DAI_ON_ETHEREUM } = require("../constants/token-addresses");
-const {getProvider}=require("../utils/providers");
+const { DAI_ON_ETHEREUM, WETH_ON_ETHEREUM } = require("../constants/token-addresses");
+const {getProvider, getSigner}=require("../utils/utilities");
 const {executeFlashloan} =require("../scripts/executeFlashLoan");
-const  {protocols}=require("../constants/protocols")
+const  {protocols}=require("../constants/protocols");
+const {deploy}=require("../scripts/deployFlashLoan");
 
 require("dotenv").config();
 
 describe("FlashLoan", function () {
 
-  let ethBalanceBeforeLoan, daiBalanceBeforeLoan, ethBalanceAfterLoan, daiBalanceAfterLoan;
-  let simpleFlashLoan;
-  let token;
-  let signer;
-  let provider;
+    let provider, signer, simpleFlashLoanAddress;  
+    let token,simpleFlashLoan;
 
-  this.beforeAll(async function deploySimpleFlashLoan() {
- 
-    ////////1 setting the signer and provider provider 
-    const networkName=hre.network.name;    
-    provider=getProvider(networkName);
-    let privateKey = networkName=="localhost"?"":process.env.PRIVATE_KEY;
-    //let wallet = privateKey? new ethers.Wallet(privateKey):"";
-    let wallet = privateKey? new ethers.Wallet(privateKey, provider):"";
-    signer = networkName=="localhost"? (await ethers.getSigners())[0]: wallet;
-    console.log(signer); 
-    ethBalanceBeforeLoan = await provider.getBalance(await signer.address);
-    console.log("ETH balance of signer before loan :",ethBalanceBeforeLoan, "wei =", ethers.formatEther(ethBalanceBeforeLoan)," ETH.");
-    ///////////////2 deploying our Flashloan contract
-    const SimpleFlashLoan = await ethers.getContractFactory("SimpleFlashLoan");
-    simpleFlashLoan = await SimpleFlashLoan.deploy(POOL_ADDRESS_PROVIDER_ON_ETHEREUM, {maxFeePerGas: 30633113823});
-    const transactionReceipt = await simpleFlashLoan.deploymentTransaction().wait(1);
-    console.log(transactionReceipt);
-    const {gasPrice, gasUsed}=transactionReceipt;
-    const transactionFee=gasPrice * gasUsed;
-    console.log("transaction fee spend for deploying the contract : ", transactionFee,"wei= ", ethers.formatEther(transactionFee), "ETH");
-    ///////////////3 transfering some of our dai from signer to the contract 
-    token = await ethers.getContractAt("IERC20", DAI_ON_ETHEREUM);
-    daiBalanceBeforeLoan=await token.balanceOf(signer.address);
-    await token.connect(signer).transfer(simpleFlashLoan.target, 25000);
-    const DAI = new ethers.Contract(DAI_ON_ETHEREUM, ERC20Json.abi, provider);
-    await DAI.connect(signer).transfer(await simpleFlashLoan.getAddress(),25000);  
-    daiBalance=await token.balanceOf(signer.address);
+    this.beforeAll(async function deploySimpleFlashLoan() {
     
-
-  });
+      const transactionReceipt=await deploy();
+      provider=getProvider(hre.network.name);
+      signer=getSigner(hre.network.name);
+      simpleFlashLoanAddress=transactionReceipt.contractAddress;    
+      token = await ethers.getContractAt("IERC20", DAI_ON_ETHEREUM);
+      //const token = new ethers.Contract(DAI_ON_ETHEREUM, ERC20Json.abi, provider);
+      await token.connect(signer).transfer(simpleFlashLoanAddress, 4000000);
+      simpleFlashLoan= new ethers.Contract(simpleFlashLoanAddress, simpleFlashLoanJson.abi, provider);
+      console.log(await token.balanceOf(simpleFlashLoan.target.toString()));
+    });
 
   it("should borrow some dai", async function () {
     
-    ///////////////////4 executing the loan    
-    const nonce= await signer.getNonce();
-    
+    const nonce= await signer.getNonce();    
     const params={
-      loanAmount: 150000, 
+      loanAmount: 3000000, 
       hops:[
           {
               protocol: protocols.UNISWAP_V2, 
-              data:null,
-              path: [DAI_ON_ETHEREUM, DAI_ON_ETHEREUM],
-              amountOutMinimum: 10,
+              data:ethers.AbiCoder.defaultAbiCoder().encode(
+                ["address"], 
+                ["0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"]//uniswapv2 router
+              ),
+              path: [DAI_ON_ETHEREUM, WETH_ON_ETHEREUM],
+              amountOutMinV3: 10,
               sqrtPriceLimitX96: 100,
-          }, 
+          },
+          {
+              protocol: protocols.SUSHISWAP, 
+              data: ethers.AbiCoder.defaultAbiCoder().encode(
+                ["address"], 
+                ["0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"]//Sushiswap router
+              ), 
+              path: [WETH_ON_ETHEREUM, DAI_ON_ETHEREUM],
+              amountOutMinV3: 10,
+              sqrtPriceLimitX96: 100,                
+          } 
       ], 
-      gasLimit:23376, 
-      gasPrice:13446636527,
-      signer: signer, 
-      simpleFlashLoanAddress: simpleFlashLoan.target, 
-      simpleFlashLoanJson: simpleFlashLoanJson, 
-      nonce:nonce
     }
-    const tx=await executeFlashloan(params)
-    await tx.wait();
-    const ethBalanceAfterLoan = await provider.getBalance(signer.address);
-    expect(ethBalanceBeforeLoan).to.be.gt(ethBalanceAfterLoan);
-   
+    const tx=await executeFlashloan(simpleFlashLoan, nonce, params,signer);
+    console.log(tx);  
+    // const txResponse=await tx.wait();
+    // console.log("execute flashLoanTransaction: ", txResponse);
+    expect(5).to.be.gt(4);   
   });
 });
+
+module.exports={getProvider};

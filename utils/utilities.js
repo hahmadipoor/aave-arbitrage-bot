@@ -12,4 +12,17 @@ const getProvider=(networkName)=>{
     return provider;
 }
 
-module.exports={getProvider};
+const getSigner=(networkName)=>{
+    
+    const provider=getProvider(networkName);
+    let privateKey = networkName=="localhost"?"":process.env.PRIVATE_KEY;
+    //let wallet = privateKey? new ethers.Wallet(privateKey):"";
+    let wallet = privateKey? new ethers.Wallet(privateKey, provider):"";
+    signer = networkName=="localhost"? (ethers.getSigners())[0]: wallet;
+    return signer
+}
+
+module.exports={
+    getProvider,
+    getSigner
+}
