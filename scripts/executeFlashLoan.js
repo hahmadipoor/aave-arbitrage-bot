@@ -1,10 +1,10 @@
 const { ethers } = require("hardhat");
-const { DAI_ON_ETHEREUM } = require("../constants/token-addresses");
+const { tokens } = require("../constants/token-addresses");
 require("dotenv").config();
 
 const executeFlashloan = async (simpleFlashLoan, nonce, params, signer)=>{
 
-    //const transactionResponse = await simpleFlashLoan.connect(signer).createFlashLoan(DAI_ON_ETHEREUM, 150000,{nonce:nonce}); // Borrow 150,000 DAI in a Flash Loan with no upfront collateral
+    //const transactionResponse = await simpleFlashLoan.connect(signer).createFlashLoan(tokens.DAI.address, 150000,{nonce:nonce}); // Borrow 150,000 DAI in a Flash Loan with no upfront collateral
     const tx=await simpleFlashLoan.connect(signer).createFlashLoan(
         {
             loanAmount: params.loanAmount, 

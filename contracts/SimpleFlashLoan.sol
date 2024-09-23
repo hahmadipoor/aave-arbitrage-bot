@@ -42,8 +42,6 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase, FlashloanValidation, IF
             })
     );
     address loanToken = RouteUtils.getInitialToken(params.routes[0]);
-        console.log("loan token:", loanToken);
-        console.log("Pool Address:", address(POOL));
         POOL.flashLoanSimple(
             address(this), //receiver
             loanToken, //the asset we want to borrow
@@ -54,35 +52,35 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase, FlashloanValidation, IF
   }
 
   function executeOperation(
-    address ,
-    uint256 ,
-    uint256 premium,
-    address initiator,
+    address asset, // loan token
+    uint256 amount, // loan amount
+    uint256 premium, // fee to repay
+    address initiator, 
     bytes calldata params
   ) external returns (bool){
    
     console.log("--------------callback is called--------------------");
     FlashParams memory decoded = abi.decode( params, (FlashParams));
     address loanToken = RouteUtils.getInitialToken(decoded.routes[0]);
-    console.log("LOAN_TOKEN CONTRACT BALANCE After borrow, BEFORE SWAP: ",IERC20(loanToken).balanceOf(address(this)));
+    uint256 loanAmount=decoded.loanAmount;
     require( IERC20(loanToken).balanceOf(address(this)) >= decoded.loanAmount,"Failed to borrow loan token");    
     // run arbitrage or liquidations here
-    // routeLoop(decoded.routes, decoded.loanAmount);
-    console.log("LOAN_TOKEN CONTRACT BALANCE AFTER BORROW AND SWAP", IERC20(loanToken).balanceOf(address(this)));
+    console.log("loan Token: ", loanToken);
+    console.log("balance before swap: ", IERC20(loanToken).balanceOf(address(this)));
+    routeLoop(decoded.routes, decoded.loanAmount);
+    console.log("balance after swap: ", IERC20(loanToken).balanceOf(address(this)));
     emit SwapFinished(loanToken,IERC20(loanToken).balanceOf(address(this)));
     require( IERC20(loanToken).balanceOf(address(this)) >= decoded.loanAmount,"Not enough amount to return loan");
     uint256 amountOwing = decoded.loanAmount + premium;
-    console.log("loan amount: ", decoded.loanAmount);
-    console.log("premium: ", premium);
+    console.log("premium: ",premium);
     console.log("amount owing: ", amountOwing);
-    console.log("loan token: ",loanToken);
-    console.log("Pool Address: ", address(POOL));    
     IERC20(loanToken).approve(address(POOL), amountOwing);
-    uint256 remained = IERC20(loanToken).balanceOf(address(this));
-    IERC20(loanToken).transfer(owner(), remained);
-    emit SentProfit(owner(), remained);
+    uint256 profit = IERC20(loanToken).balanceOf(address(this))-amountOwing;
+    if(profit>0){
+        IERC20(loanToken).transfer(owner(), profit);
+        emit SentProfit(owner(), profit);
+    }
     console.log("++++++++++++End of callback+++++++++++++++++++++++++");
-    ///////////   
     return true;
   }
 
