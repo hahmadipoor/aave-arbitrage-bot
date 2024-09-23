@@ -41,6 +41,8 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase, FlashloanValidation, IF
                 routes: params.routes
             })
     );
+    console.logUint(params.loanAmount);
+    console.logAddress(params.routes[0].hops[0].path[0]);
     address loanToken = RouteUtils.getInitialToken(params.routes[0]);
         POOL.flashLoanSimple(
             address(this), //receiver
@@ -96,6 +98,7 @@ contract SimpleFlashLoan is FlashLoanSimpleReceiverBase, FlashloanValidation, IF
 
   function hopLoop(Route memory route, uint256 totalAmount) internal {
 
+        console.log("hopLoop is called");
         uint256 amountIn = totalAmount;
         for (uint256 i = 0; i < route.hops.length; i++) {
             amountIn = pickProtocol(route.hops[i], amountIn);

@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 const hre=require("hardhat");
 const { POOL_ADDRESS_PROVIDER } = require("../constants/pool-addressesProvider");
-const {getProvider, getSigner}=require("../utils/utilities");
+const {getProvider, getSigner}=require("../utils/network-utils");
 require("dotenv").config();
 
 
@@ -15,10 +15,10 @@ const deploy=async()=>{
     const SimpleFlashLoan = await ethers.getContractFactory("SimpleFlashLoan");
     simpleFlashLoan = await SimpleFlashLoan.deploy(
       POOL_ADDRESS_PROVIDER, 
-      {
-        maxFeePerGas:19971894521,
-        gasLimit: 3068404
-      }
+      // {
+      //   maxFeePerGas:14235692859,
+      //   gasLimit: 30000000
+      // }
     );
     const transactionReceipt = await simpleFlashLoan.deploymentTransaction().wait(1);
     return transactionReceipt;

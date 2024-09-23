@@ -5,7 +5,7 @@ const ERC20Json=require("../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.
 const simpleFlashLoanJson=require("../artifacts/contracts/SimpleFlashLoan.sol/SimpleFlashLoan.json");
 const hre=require("hardhat");
 const { tokens } = require("../constants/token-addresses");
-const {getProvider, getSigner}=require("../utils/utilities");
+const {getProvider, getSigner}=require("../utils/network-utils");
 const {executeFlashloan} =require("../scripts/executeFlashLoan");
 const  {protocols}=require("../constants/protocols");
 const {deploy}=require("../scripts/deployFlashLoan");
@@ -22,9 +22,10 @@ describe("FlashLoan", function () {
         
       console.log("Deploying the flashloan...")
       const transactionReceipt=await deploy();
+      simpleFlashLoanAddress=transactionReceipt.contractAddress;
       provider=getProvider(hre.network.name);
       signer=getSigner(hre.network.name);
-      simpleFlashLoanAddress=transactionReceipt.contractAddress;    
+          
       //const feeData=(await provider.getFeeData())
       //console.log(feeData);
       token = await ethers.getContractAt("IERC20", tokens.DAI.address);
